@@ -12,7 +12,7 @@ Activer l'environnement virtuel
 source myenv/bin/activate  # Sur macOS/Linux
 ```
 Installer le module dans l'environnement virtuel
-```
+``` bash
 pip install mistralai
 ```
 ## Execution
@@ -33,7 +33,7 @@ pour avoir les versions utilisez la commande
 ```
 3. Créer un Dockerfile
 Créez un fichier nommé Dockerfile dans le répertoire racine de votre projet. Ce fichier contiendra les instructions pour construire l'image Docker. Voici un exemple de Dockerfile pour une application Flask :
-```
+``` dockerfile
 # Utiliser une image de base officielle Python
 FROM python:3.9-slim
 
