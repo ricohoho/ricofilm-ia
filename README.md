@@ -1,5 +1,14 @@
 # Service permettant d'exploiter le LLM Mistral pour RicoFilm !
 
+# Ricofilm - Architecture
+```mermaid
+flowchart
+  NginX["Nginx:80"] --> Frontend
+  Frontend["Ricofilm-front :4200"] --> Backend["ricofilm-back :3000"]
+  Backend --> Database[(Database)]
+  Backend --> AIService["ricofilm-ia :5000"]
+```
+
 # Environnement Python
 
 ## Environnement préparation
@@ -68,11 +77,11 @@ MISTRAL_API_KEY=xxxxx
 4. Construire l'image Docker
 Ouvrez un terminal dans le répertoire de votre projet et exécutez la commande suivante pour construire l'image Docker :
 ```
-docker build -t rico-ia .
+  docker build -t ricofilm-ia .
 ```
 6. Exécuter le conteneur Docker
 Une fois l'image construite, vous pouvez exécuter un conteneur à partir de cette image :
 ```
-docker run -d -p 5000:5000 --env-file .env rico-ia
+docker run -d --name ricofilm-iac -p 5000:5000 --env-file .env ricofilm-ia
 ```
 Cette commande exécute le conteneur en arrière-plan (-d) et mappe le port 5000 du conteneur au port 5000 de votre machine hôte.
