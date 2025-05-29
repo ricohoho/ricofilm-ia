@@ -87,7 +87,7 @@ def search_moviesSQL():
         f"J'ai une base MongoDb avec une collection FILMS."
         "je vais te donner la structure d'un document de cette collection : "
         f"La structure de document est celle ci : \"{strure_doc_ricofilm}\""
-        f"Je vais te donner aussi une reqete en language naturel : {requete}. "
+        f"Je vais te donner aussi une reqete en language naturel de recherche de films : {requete}. "
 		f"Donne mois une requete de type :\"{modeleDeRrequete}\"."
         "Peux tu générer la requete pour MongoSQL qui répond aux exigencces de la requete"        
     )
@@ -269,55 +269,16 @@ def extract_json_from_text(text):
     match = pattern.search(text)
 
     if match:
-        json_string_from_block = match.group(1).strip()
-        print("extract_json_from_text : match content from ``` block")
-        
-        processed_json_string = convert_films_to_lowercase(json_string_from_block)
-        
-        find_keyword = "db.getCollection('films').find("
-        find_keyword_start_index = processed_json_string.find(find_keyword)
-        
-        if find_keyword_start_index != -1:
-            actual_content_start_index = find_keyword_start_index + len(find_keyword)
-            
-            open_paren_count = 1 
-            correct_content_end_index = -1
-            
-            # Check if the character immediately preceding actual_content_start_index is indeed '('
-            # This is implied by find_keyword ending in '('
-            # We are looking for the matching ')' for this '('
-
-            for i in range(actual_content_start_index, len(processed_json_string)):
-                if processed_json_string[i] == '(':
-                    open_paren_count += 1
-                elif processed_json_string[i] == ')':
-                    open_paren_count -= 1
-                    if open_paren_count == 0: 
-                        correct_content_end_index = i
-                        break
-            
-            if correct_content_end_index != -1:
-                extracted_query_content = processed_json_string[actual_content_start_index:correct_content_end_index].strip()
-                return extracted_query_content
-            else:
-                print("extract_json_from_text : No matching closing parenthesis found for find()")
-                # This case means the find() part is malformed, e.g. db.getCollection('films').find({'actor': 'Test' 
-                # (missing closing parenthesis)
-                # Based on original tests, this should likely return what it can, even if malformed.
-                # However, if we strictly need a balanced parenthesis, this should be None.
-                # The previous failing tests (e.g. test_extract_json_from_text_malformed_json_block)
-                # expected the malformed part.
-                # Let's try to match that: if no closing paren for find() is found, return from start to end of string.
-                # This is risky. A safer bet is to return None if structure is compromised.
-                # The test 'test_extract_json_from_text_malformed_json_block' had expected: "{'name': 'test'"}".
-                # The original code `end_index = len(json_string)-1` achieved this by chance.
-                # For now, returning None for unclosed find() seems more robust.
-                # If a test like test_extract_json_from_text_malformed_json_block expects partial recovery,
-                # that test's expectation needs to be revisited.
-                # For now, if find() is not properly closed, consider it unextractable.
-                return None 
-        else:
-            print(f"extract_json_from_text : '{find_keyword}' not found in the extracted {found_block_type} block.")
+        print("extract_json_from_text : match")
+        json_string = match.group(1).strip()  # Extraire et nettoyer la chaîne JSON
+        try:
+            json_string = convert_films_to_lowercase(json_string);
+            start_index = json_string.find("db.getCollection('films').find(") + len("db.getCollection('films').find(")
+            end_index = len(json_string)-1
+            json_string = json_string[start_index:end_index].strip()
+            return json_string
+        except json.JSONDecodeError as e:
+            print("Erreur lors du décodage JSON :", e)
             return None
     else:
         # This case should be caught by the initial check for found_block_type if it's working correctly
@@ -334,6 +295,16 @@ def convert_films_to_lowercase(text):
     return re.sub(r'\bFILMS\b', 'films', text, flags=re.IGNORECASE)
 
 
+def remove_trailing_parenthesis(text):
+    """
+    Supprime le caractère ')' si la chaîne se termine par ')'.
+    
+    :param text: La chaîne d'entrée.
+    :return: La chaîne sans le caractère ')' à la fin.
+    """
+    if text.endswith(")"):
+        return text[:-1]  # Supprime le dernier caractère
+    return text
 
 
 if __name__ == '__main__':
