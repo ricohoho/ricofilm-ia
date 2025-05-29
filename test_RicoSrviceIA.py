@@ -4,12 +4,12 @@ import json
 from flask import Flask, jsonify
 
 # Assuming RicoSrviceIA.py is in the same directory and contains the Flask app 'app'
-# and the functions to be tested.
+# and the functions to be tested. (eric)
 from RicoSrviceIA import app, extract_json_from_text, convert_films_to_lowercase, get_strure_doc_ricofilm
 
 class TestRicoServiceIA(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self): 
         # Create a test client
         self.app = app.test_client()
         # Propagate the exceptions to the test client

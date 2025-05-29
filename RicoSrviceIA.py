@@ -50,17 +50,15 @@ def search_movies():
 
     print("Réponse de Mistral AI :", response_content) 
 
-    # The response_content from Mistral for this route is expected to be a direct JSON string
-    # representing a list of movies, e.g., "[{'title': 'Movie A', 'id_imdb': 'tt1234567'}]"
-    # Therefore, we should parse it directly.
-    try:
-        movies_list = json.loads(response_content)
-    except json.JSONDecodeError as e:
-        print(f"Erreur lors du décodage JSON de la réponse de Mistral AI: {e}")
-        # Return an error response or an empty list, depending on desired behavior
-        return jsonify({"error": "Failed to parse AI response", "details": str(e)}), 500
+    json_string = extract_json_from_text(response_content,'json')
     
-    return jsonify(movies_list)
+
+
+    # Supposons que la réponse est déjà au format JSON
+    # movies_list = json.loads(response_content)
+    
+
+    return jsonify(json_string)
 
 
 @app.route('/search_movies_sql', methods=['POST'])
@@ -276,6 +274,8 @@ def extract_json_from_text(text):
             start_index = json_string.find("db.getCollection('films').find(") + len("db.getCollection('films').find(")
             end_index = len(json_string)-1
             json_string = json_string[start_index:end_index].strip()
+            # Gestion du cas ou il y a une parenthese a la fin
+            json_string = remove_trailing_parenthesis(json_string)
             return json_string
         except json.JSONDecodeError as e:
             print("Erreur lors du décodage JSON :", e)
