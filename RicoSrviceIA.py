@@ -50,6 +50,7 @@ def search_movies():
 
     print("Réponse de Mistral AI :", response_content) 
 
+
     # First, extract content from ```json ... ``` block if present.
     # Mistral is prompted for raw JSON, but it might sometimes wrap it.
     extracted_json_string = extract_json_from_text(response_content, is_mongo_query=False)
@@ -78,6 +79,7 @@ def search_movies():
     return jsonify(movies_list_final)
 
 
+
 @app.route('/search_movies_sql', methods=['POST'])
 def search_moviesSQL():  
     print(" search_moviesSQL Debut")
@@ -102,7 +104,7 @@ def search_moviesSQL():
         f"J'ai une base MongoDb avec une collection FILMS."
         "je vais te donner la structure d'un document de cette collection : "
         f"La structure de document est celle ci : \"{strure_doc_ricofilm}\""
-        f"Je vais te donner aussi une reqete en language naturel : {requete}. "
+        f"Je vais te donner aussi une reqete en language naturel de recherche de films : {requete}. "
 		f"Donne mois une requete de type :\"{modeleDeRrequete}\"."
         "Peux tu générer la requete pour MongoSQL qui répond aux exigencces de la requete"        
     )
@@ -260,18 +262,23 @@ def extract_requete_mongi(text):
 
     return mongo_query
 
+
 def extract_json_from_text(text, is_mongo_query=False): # MODIFIED SIGNATURE
     print("extract_json_from_text : debut, is_mongo_query =", is_mongo_query)
+
     
     # Determine block type ('json' or 'javascript') more reliably
     found_block_type = None
     idx_json = text.find("```json")
     idx_js = text.find("```javascript")
+    print("idx_json="+str(idx_json))
+    print("idx_js="+str(idx_js))
+
 
     # Prioritize the block that appears first in the text
-    if idx_json != -1 and (idx_js == -1 or idx_json < idx_js):
+    if idx_json != -1 and (idx_js == -1 or idx_json > idx_js):
         found_block_type = 'json'
-    elif idx_js != -1 and (idx_json == -1 or idx_js < idx_json):
+    elif idx_js != -1 and (idx_json == -1 or idx_js > idx_json):
         found_block_type = 'javascript'
 
     if not found_block_type:
@@ -322,6 +329,7 @@ def extract_json_from_text(text, is_mongo_query=False): # MODIFIED SIGNATURE
         else:
             print(f"extract_json_from_text : '{find_keyword}' not found in the processed {found_block_type} block (after ``` extraction).")
             return None # If the specific find() structure isn't there, it's not a valid mongo query for this function.
+
     else:
         # This case should ideally be caught by the initial check for found_block_type
         print("Aucun JSON/JavaScript ``` bloc contenu trouvé avec regex (devrait être impossible ici).")
@@ -337,6 +345,16 @@ def convert_films_to_lowercase(text):
     return re.sub(r'\bFILMS\b', 'films', text, flags=re.IGNORECASE)
 
 
+def remove_trailing_parenthesis(text):
+    """
+    Supprime le caractère ')' si la chaîne se termine par ')'.
+    
+    :param text: La chaîne d'entrée.
+    :return: La chaîne sans le caractère ')' à la fin.
+    """
+    if text.endswith(")"):
+        return text[:-1]  # Supprime le dernier caractère
+    return text
 
 
 if __name__ == '__main__':
