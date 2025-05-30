@@ -50,17 +50,32 @@ def search_movies():
 
     print("Réponse de Mistral AI :", response_content) 
 
-    # The response_content from Mistral for this route is expected to be a direct JSON string
-    # representing a list of movies, e.g., "[{'title': 'Movie A', 'id_imdb': 'tt1234567'}]"
-    # Therefore, we should parse it directly.
-    try:
-        movies_list = json.loads(response_content)
-    except json.JSONDecodeError as e:
-        print(f"Erreur lors du décodage JSON de la réponse de Mistral AI: {e}")
-        # Return an error response or an empty list, depending on desired behavior
-        return jsonify({"error": "Failed to parse AI response", "details": str(e)}), 500
-    
-    return jsonify(movies_list)
+    # First, extract content from ```json ... ``` block if present.
+    # Mistral is prompted for raw JSON, but it might sometimes wrap it.
+    extracted_json_string = extract_json_from_text(response_content, is_mongo_query=False)
+
+    movies_list_final = None
+    if extracted_json_string is not None:
+        try:
+            movies_list_final = json.loads(extracted_json_string)
+        except json.JSONDecodeError as e_block:
+            print(f"Erreur lors du décodage JSON du bloc extrait: {e_block}. Tentative de décodage direct de la réponse originale.")
+            # Fallback: if block parsing fails, try parsing original response_content directly
+            try:
+                movies_list_final = json.loads(response_content)
+            except json.JSONDecodeError as e_direct:
+                print(f"Erreur lors du décodage JSON direct de response_content: {e_direct}")
+                return jsonify({"error": "Invalid AI response", "details": "JSON parsing failed for both extracted block and direct content."}), 500
+    else:
+        # If no ``` block was found by extract_json_from_text, try parsing response_content directly
+        try:
+            print("Aucun bloc JSON extrait (ou bloc vide), tentative de décodage JSON direct de response_content.")
+            movies_list_final = json.loads(response_content)
+        except json.JSONDecodeError as e_direct:
+            print(f"Erreur lors du décodage JSON direct de response_content (aucun bloc valide trouvé): {e_direct}")
+            return jsonify({"error": "Invalid AI response format", "details": "No valid JSON block found and direct parsing failed."}), 500
+
+    return jsonify(movies_list_final)
 
 
 @app.route('/search_movies_sql', methods=['POST'])
@@ -111,7 +126,7 @@ def search_moviesSQL():
     print("----------------------------------------]") 
     
     # json_string = extract_requete_mongi(response_content)    
-    json_string = extract_json_from_text(response_content)
+    json_string = extract_json_from_text(response_content, is_mongo_query=True) # MODIFIED CALL
     print("Rsuktat=", json_string) 
 
     # Supposons que la réponse est déjà au format JSON
@@ -245,8 +260,8 @@ def extract_requete_mongi(text):
 
     return mongo_query
 
-def extract_json_from_text(text):
-    print("extract_json_from_text : debut")
+def extract_json_from_text(text, is_mongo_query=False): # MODIFIED SIGNATURE
+    print("extract_json_from_text : debut, is_mongo_query =", is_mongo_query)
     
     # Determine block type ('json' or 'javascript') more reliably
     found_block_type = None
@@ -258,7 +273,7 @@ def extract_json_from_text(text):
         found_block_type = 'json'
     elif idx_js != -1 and (idx_json == -1 or idx_js < idx_json):
         found_block_type = 'javascript'
-    
+
     if not found_block_type:
         print("Aucun JSON/JavaScript ``` bloc trouvé dans le texte.")
         return None
@@ -270,58 +285,46 @@ def extract_json_from_text(text):
 
     if match:
         json_string_from_block = match.group(1).strip()
-        print("extract_json_from_text : match content from ``` block")
-        
+        print("extract_json_from_text : extracted content from ``` block")
+
+        if not is_mongo_query:
+            return json_string_from_block # Return raw content if not a mongo query
+
+        # Continue with MongoDB query parsing logic only if is_mongo_query is True
+        print("extract_json_from_text : processing as MongoDB query")
+        # Apply case conversion for 'films' collection name, specific to mongo query path
         processed_json_string = convert_films_to_lowercase(json_string_from_block)
-        
+
         find_keyword = "db.getCollection('films').find("
         find_keyword_start_index = processed_json_string.find(find_keyword)
-        
+
         if find_keyword_start_index != -1:
             actual_content_start_index = find_keyword_start_index + len(find_keyword)
-            
-            open_paren_count = 1 
+
+            open_paren_count = 1
             correct_content_end_index = -1
-            
-            # Check if the character immediately preceding actual_content_start_index is indeed '('
-            # This is implied by find_keyword ending in '('
-            # We are looking for the matching ')' for this '('
 
             for i in range(actual_content_start_index, len(processed_json_string)):
                 if processed_json_string[i] == '(':
                     open_paren_count += 1
                 elif processed_json_string[i] == ')':
                     open_paren_count -= 1
-                    if open_paren_count == 0: 
+                    if open_paren_count == 0:
                         correct_content_end_index = i
                         break
-            
+
             if correct_content_end_index != -1:
                 extracted_query_content = processed_json_string[actual_content_start_index:correct_content_end_index].strip()
                 return extracted_query_content
             else:
                 print("extract_json_from_text : No matching closing parenthesis found for find()")
-                # This case means the find() part is malformed, e.g. db.getCollection('films').find({'actor': 'Test' 
-                # (missing closing parenthesis)
-                # Based on original tests, this should likely return what it can, even if malformed.
-                # However, if we strictly need a balanced parenthesis, this should be None.
-                # The previous failing tests (e.g. test_extract_json_from_text_malformed_json_block)
-                # expected the malformed part.
-                # Let's try to match that: if no closing paren for find() is found, return from start to end of string.
-                # This is risky. A safer bet is to return None if structure is compromised.
-                # The test 'test_extract_json_from_text_malformed_json_block' had expected: "{'name': 'test'"}".
-                # The original code `end_index = len(json_string)-1` achieved this by chance.
-                # For now, returning None for unclosed find() seems more robust.
-                # If a test like test_extract_json_from_text_malformed_json_block expects partial recovery,
-                # that test's expectation needs to be revisited.
-                # For now, if find() is not properly closed, consider it unextractable.
-                return None 
+                return None
         else:
-            print(f"extract_json_from_text : '{find_keyword}' not found in the extracted {found_block_type} block.")
-            return None
+            print(f"extract_json_from_text : '{find_keyword}' not found in the processed {found_block_type} block (after ``` extraction).")
+            return None # If the specific find() structure isn't there, it's not a valid mongo query for this function.
     else:
-        # This case should be caught by the initial check for found_block_type if it's working correctly
-        print("Aucun JSON/JavaScript ``` bloc trouvé avec regex (devrait être impossible ici).")
+        # This case should ideally be caught by the initial check for found_block_type
+        print("Aucun JSON/JavaScript ``` bloc contenu trouvé avec regex (devrait être impossible ici).")
         return None
 
 def convert_films_to_lowercase(text):

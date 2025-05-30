@@ -20,16 +20,18 @@ class TestRicoServiceIA(unittest.TestCase):
         text = "Some text ```json{\"key\": \"value\", \"path\": \"db.getCollection('films').find({'name': 'test'})\"}``` more text"
         # The function extracts the part after db.getCollection('films').find() and an opening parenthesis
         expected_output = "{'name': 'test'}"
-        self.assertEqual(extract_json_from_text(text), expected_output)
+        self.assertEqual(extract_json_from_text(text, is_mongo_query=True), expected_output)
 
     def test_extract_json_from_text_valid_javascript_block(self):
         text = "Some text ```javascript{\"key\": \"value\", \"path\": \"db.getCollection('films').find({'name': 'test_js'})\"}``` more text"
         expected_output = "{'name': 'test_js'}"
-        self.assertEqual(extract_json_from_text(text), expected_output)
+        self.assertEqual(extract_json_from_text(text, is_mongo_query=True), expected_output)
 
     def test_extract_json_from_text_no_json_block(self):
         text = "Some text without any json block."
-        self.assertIsNone(extract_json_from_text(text))
+        self.assertIsNone(extract_json_from_text(text, is_mongo_query=True)) # Also test with True, should still be None
+        self.assertIsNone(extract_json_from_text(text, is_mongo_query=False))
+
 
     def test_extract_json_from_text_malformed_json_block(self):
         # Malformed due to structure, but the function primarily extracts based on ``` markers and specific string splitting.
@@ -41,18 +43,18 @@ class TestRicoServiceIA(unittest.TestCase):
         # this would ideally raise a JSONDecodeError or return None if handled.
         # Given the current implementation, it will extract the string as is, post "db.getCollection('films').find(".
         # UPDATED EXPECTATION: The new extract_json_from_text returns None if find() is not properly closed.
-        expected_output = None 
-        self.assertEqual(extract_json_from_text(text), expected_output)
+        expected_output = None
+        self.assertEqual(extract_json_from_text(text, is_mongo_query=True), expected_output)
 
     def test_extract_json_from_text_with_films_uppercase(self):
         text = "```javascript db.getCollection('FILMS').find({'actor': 'TestActor'}) ```"
         expected_output = "{'actor': 'TestActor'}" # convert_films_to_lowercase should handle 'FILMS'
-        self.assertEqual(extract_json_from_text(text), expected_output)
+        self.assertEqual(extract_json_from_text(text, is_mongo_query=True), expected_output)
 
     def test_extract_json_from_text_empty_find_content(self):
         text = "```json db.getCollection('films').find() ```"
-        expected_output = "" # or handle as an error depending on desired behavior
-        self.assertEqual(extract_json_from_text(text), expected_output)
+        expected_output = ""
+        self.assertEqual(extract_json_from_text(text, is_mongo_query=True), expected_output)
 
     def test_extract_json_from_text_no_find_in_path(self):
         # This case might not be perfectly handled by the current string splitting logic if 'db.getCollection('films').find(' is not present.
@@ -66,7 +68,16 @@ class TestRicoServiceIA(unittest.TestCase):
         # inside the extracted json_string if the structure is different.
         # The function's current structure implies it will print "Aucun JSON trouvé dans le texte." or similar if the pattern for extraction isn't met.
         # Let's assume it returns None if the full "db.getCollection('films').find(" part isn't found after initial regex extraction.
-        self.assertIsNone(extract_json_from_text(text))
+        self.assertIsNone(extract_json_from_text(text, is_mongo_query=True))
+
+    # New test for is_mongo_query=False
+    def test_extract_json_from_text_block_only_no_mongo_query(self):
+        text = "```json {\"key\": \"value\", \"data\": \"some data\"} ``` more text"
+        expected_block_content = "{\"key\": \"value\", \"data\": \"some data\"}"
+        self.assertEqual(extract_json_from_text(text, is_mongo_query=False), expected_block_content)
+        # When is_mongo_query is True, but no find()
+        self.assertIsNone(extract_json_from_text(text, is_mongo_query=True))
+
 
     def test_convert_films_to_lowercase_FILMS(self):
         self.assertEqual(convert_films_to_lowercase("FILMS"), "films")
@@ -107,9 +118,8 @@ class TestRicoServiceIA(unittest.TestCase):
         mock_response = MagicMock()
         mock_choice = MagicMock()
         mock_message = MagicMock()
-        # The AI is expected to return a JSON string within its content field
-        # JSON requires double quotes for keys and string values.
-        mock_message.content = '[{"title": "Movie A", "id_imdb": "tt1234567"}]'
+        # Mock AI response to include a JSON block, to test extract_json_from_text path
+        mock_message.content = 'Preamble text ```json [{\"title\": \"Movie A\", \"id_imdb\": \"tt1234567\"}] ``` Epilogue text'
         mock_choice.message = mock_message
         mock_response.choices = [mock_choice]
         mock_mistral_client.chat.complete.return_value = mock_response
@@ -118,10 +128,10 @@ class TestRicoServiceIA(unittest.TestCase):
         response = self.app.post('/search_movies',
                                  data=json.dumps({'actor': 'Test Actor'}),
                                  content_type='application/json')
-        
+
         # Assertions
         self.assertEqual(response.status_code, 200)
-        
+
         # This assertion assumes the route is changed to use json.loads(response_content)
         # and then returns jsonify(parsed_json)
         expected_data = [{'title': 'Movie A', 'id_imdb': 'tt1234567'}]
@@ -147,18 +157,19 @@ class TestRicoServiceIA(unittest.TestCase):
         mock_response = MagicMock()
         mock_choice = MagicMock()
         mock_message = MagicMock()
-        mock_message.content = "[]" # Empty list for an empty actor query
+        # Mock AI response to include a JSON block
+        mock_message.content = "```json [] ```" # Empty list for an empty actor query, within a block
         mock_choice.message = mock_message
         mock_response.choices = [mock_choice]
         mock_mistral_client.chat.complete.return_value = mock_response
-        
+
         response = self.app.post('/search_movies',
                                  data=json.dumps({'actor': ''}),
                                  content_type='application/json')
-        
+
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), []) # Expecting an empty list
-        
+
         mock_mistral_client.chat.complete.assert_called_once()
         args, kwargs = mock_mistral_client.chat.complete.call_args
         # Check that the query was formed with an empty actor string
@@ -186,7 +197,7 @@ class TestRicoServiceIA(unittest.TestCase):
         # Configure mock for extract_json_from_text
         expected_mongo_query = "{'actor': 'Test'}"
         mock_extract_json.return_value = expected_mongo_query
-        
+
         natural_query = "Find movies with Test Actor released after 2000"
         response = self.app.post('/search_movies_sql',
                                  data=json.dumps({'requete': natural_query}),
@@ -206,15 +217,14 @@ class TestRicoServiceIA(unittest.TestCase):
         # str(mock_schema) will use single quotes for string keys/values if they don't contain single quotes.
         # json.dumps uses double quotes. The actual prompt uses str() then embeds in \" \".
         expected_schema_str_in_prompt = f'"{str(mock_schema)}"'
-        self.assertIn(expected_schema_str_in_prompt, kwargs['messages'][0]['content']) 
+        self.assertIn(expected_schema_str_in_prompt, kwargs['messages'][0]['content'])
         self.assertIn("db.getCollection('films').find", kwargs['messages'][0]['content']) # Check model query is in prompt
 
         # Verify get_strure_doc_ricofilm call
         mock_get_schema.assert_called_once()
 
         # Verify extract_json_from_text call
-        # The extract_json_from_text in RicoSrviceIA.py does not take a second argument.
-        mock_extract_json.assert_called_once_with(mock_ai_message.content)
+        mock_extract_json.assert_called_once_with(mock_ai_message.content, is_mongo_query=True)
 
 
     @patch('RicoSrviceIA.client')
@@ -247,8 +257,8 @@ class TestRicoServiceIA(unittest.TestCase):
         # The prompt structure is f"... une reqete en language naturel : {requete}. "
         # If requete is '', this becomes "... une reqete en language naturel : . "
         self.assertIn("reqete en language naturel : . ", kwargs['messages'][0]['content'])
-        
-        mock_extract_json.assert_called_once_with(mock_ai_message.content)
+
+        mock_extract_json.assert_called_once_with(mock_ai_message.content, is_mongo_query=True)
 
     # Test to see what happens if Mistral returns content that extract_json_from_text can't parse (e.g. not the expected format)
     @patch('RicoSrviceIA.client')
@@ -265,13 +275,13 @@ class TestRicoServiceIA(unittest.TestCase):
 
         mock_schema = {"_id": "id"}
         mock_get_schema.return_value = mock_schema
-        
+
         natural_query = "A valid query"
         response = self.app.post('/search_movies_sql',
                                  data=json.dumps({'requete': natural_query}),
                                  content_type='application/json')
 
-        self.assertEqual(response.status_code, 200) 
+        self.assertEqual(response.status_code, 200)
         # extract_json_from_text returns None if it can't find the JSON/JS block.
         # The endpoint returns this None value directly. Flask's jsonify(None) would be 'null',
         # but this route returns the string from extract_json_from_text directly.
