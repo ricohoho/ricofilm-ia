@@ -12,7 +12,7 @@ class TestRicoServiceIA(unittest.TestCase):
     def setUp(self): 
         # Create a test client
         self.app = app.test_client()
-        # Propagate the exceptions to the test client
+        # Propagate the exceptions to the test client   
         self.app.testing = True
 
     # Test methods will be added here
@@ -36,6 +36,7 @@ class TestRicoServiceIA(unittest.TestCase):
         # The current implementation of extract_json_from_text in RicoSrviceIA.py might not validate JSON structure deeply,
         # it primarily extracts a string. If it were to parse with json.loads before returning, this test would be different.
         text = "Some text ```json{\"key\": \"value\", \"path\": \"db.getCollection('films').find({'name': 'test'\"}``` more text"
+        print("avant appl text", text)
         # Based on current function: it will extract the string.
         # If json.loads were used in the main function before returning the specific substring,
         # this would ideally raise a JSONDecodeError or return None if handled.

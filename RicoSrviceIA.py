@@ -50,7 +50,8 @@ def search_movies():
 
     print("Réponse de Mistral AI :", response_content) 
 
-    json_string = extract_json_from_text(response_content,'json')
+    #json_string = extract_json_from_text(response_content,'json')
+    json_string = extract_json_from_text(response_content)
     
 
 
@@ -245,16 +246,20 @@ def extract_requete_mongi(text):
 
 def extract_json_from_text(text):
     print("extract_json_from_text : debut")
+    print("text="+text)
     
     # Determine block type ('json' or 'javascript') more reliably
     found_block_type = None
     idx_json = text.find("```json")
     idx_js = text.find("```javascript")
+    print("idx_json="+str(idx_json))
+    print("idx_js="+str(idx_js))
+
 
     # Prioritize the block that appears first in the text
-    if idx_json != -1 and (idx_js == -1 or idx_json < idx_js):
+    if idx_json != -1 and (idx_js == -1 or idx_json > idx_js):
         found_block_type = 'json'
-    elif idx_js != -1 and (idx_json == -1 or idx_js < idx_json):
+    elif idx_js != -1 and (idx_json == -1 or idx_js > idx_json):
         found_block_type = 'javascript'
     
     if not found_block_type:
