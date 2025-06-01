@@ -84,4 +84,36 @@ Une fois l'image construite, vous pouvez exécuter un conteneur à partir de cet
 ```
 docker run -d --name ricofilm-iac -p 5000:5000 --env-file .env ricofilm-ia
 ```
-Cette commande exécute le conteneur en arrière-plan (-d) et mappe le port 5000 du conteneur au port 5000 de votre machine hôte.
+
+## Endpoint: `/search_movies_web`
+
+-   **Method:** `POST`
+-   **Description:** Searches for movies based on a natural language query by leveraging the Mistral AI.
+-   **Request Body (JSON):**
+    ```json
+    {
+        "requete": "your natural language movie query here"
+    }
+    ```
+-   **Success Response (JSON):**
+    Returns a list of movies, with each movie object containing `title` and `id_imdb`.
+    ```json
+    [
+        {
+            "title": "Movie Title 1",
+            "id_imdb": "tt1234567"
+        },
+        {
+            "title": "Movie Title 2",
+            "id_imdb": "tt9876543"
+        }
+    ]
+    ```
+-   **Error Response (JSON):**
+    In case of an error (e.g., AI response parsing issue), returns an error object.
+    ```json
+    {
+        "error": "Error message",
+        "details": "Detailed error information"
+    }
+    ```
