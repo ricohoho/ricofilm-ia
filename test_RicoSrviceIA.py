@@ -255,9 +255,12 @@ class TestRicoServiceIA(unittest.TestCase):
 
         mock_mistral_client.chat.complete.assert_called_once()
         args, kwargs = mock_mistral_client.chat.complete.call_args
-        # The prompt structure is f"... une reqete en language naturel : {requete}. "
-        # If requete is '', this becomes "... une reqete en language naturel : . "
-        self.assertIn("reqete en language naturel : . ", kwargs['messages'][0]['content'])
+        # The prompt structure is f"... une reqete en language naturel de recherche de films : {requete}. Donne mois ..."
+        # If requete is '', this becomes "... une reqete en language naturel de recherche de films : . Donne mois ..."
+        prompt_content = kwargs['messages'][0]['content']
+        self.assertIn("Je vais te donner aussi une reqete en language naturel de recherche de films : ", prompt_content)
+        self.assertIn(". Donne mois une requete de type", prompt_content)
+        self.assertIn("recherche de films : . Donne mois", prompt_content) # Ensures the empty part
 
         mock_extract_json.assert_called_once_with(mock_ai_message.content, is_mongo_query=True)
 
@@ -295,6 +298,42 @@ class TestRicoServiceIA(unittest.TestCase):
         # Let's check the content of `RicoSrviceIA.py`: `return json_string`.
         # If `json_string` is `None`, the body will literally be the string "None".
         self.assertEqual(response.get_data(as_text=True), "None")
+
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_valid_requete(self, mock_mistral_client):
+        # Configure the mock client's chat.complete.return_value
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        # Mock AI response to include a JSON block
+        mock_message.content = 'Some preamble ```json [{"title": "Inception", "id_imdb": "tt1375666"}, {"title": "The Matrix", "id_imdb": "tt0133093"}] ``` Some epilogue'
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        # Make a POST request to the endpoint
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'sci-fi classics'}),
+                                 content_type='application/json')
+
+        # Assertions
+        self.assertEqual(response.status_code, 200)
+        expected_data = [{'title': 'Inception', 'id_imdb': 'tt1375666'}, {'title': 'The Matrix', 'id_imdb': 'tt0133093'}]
+        self.assertEqual(response.get_json(), expected_data)
+
+        # Verify Mistral client was called correctly
+        mock_mistral_client.chat.complete.assert_called_once()
+        args, kwargs = mock_mistral_client.chat.complete.call_args
+        self.assertEqual(kwargs['model'], "mistral-large-latest")
+
+        # Check content of the prompt
+        prompt_content = kwargs['messages'][0]['content']
+        self.assertIn('sci-fi classics', prompt_content)
+        self.assertIn("la liste des films qui répondent à la requete", prompt_content)
+        self.assertIn("formatés au format json", prompt_content)
+        self.assertIn("title", prompt_content)
+        self.assertIn("son numéro imbd", prompt_content)
 
 
 if __name__ == '__main__':

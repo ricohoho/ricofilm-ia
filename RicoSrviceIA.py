@@ -139,6 +139,66 @@ def search_moviesSQL():
     return str(json_string)
 
 
+@app.route('/search_movies_web', methods=['POST'])
+def search_movies_web():
+    # Récupérer la requête utilisateur
+    requete = request.json.get('requete', '')
+    print("requete="+requete)
+
+    # Construire la requête pour Mistral AI
+    user_query = (
+        f"la liste des films qui répondent à la requete: {requete}, la liste retour étant formatés au format json, ayant comme attribut : title, son numéro imbd. "
+        "Par exemple : [{'title': 'Film A', 'id_imdb': 'tt1234567'}, {'title': 'Film B', 'id_imdb': 'tt7654321'}]."
+    )
+
+    print("user_query="+user_query)
+
+    # Interroger Mistral AI
+    chat_response = client.chat.complete(
+        model=model,
+        messages=[
+            {
+                "role": "user",
+                "content": user_query,
+            },
+        ],
+        stream=False
+    )
+
+    # Extraire et traiter la réponse
+    response_content = chat_response.choices[0].message.content
+
+    print("Réponse de Mistral AI :", response_content)
+
+
+    # First, extract content from ```json ... ``` block if present.
+    # Mistral is prompted for raw JSON, but it might sometimes wrap it.
+    extracted_json_string = extract_json_from_text(response_content, is_mongo_query=False)
+
+    movies_list_final = None
+    if extracted_json_string is not None:
+        try:
+            movies_list_final = json.loads(extracted_json_string)
+        except json.JSONDecodeError as e_block:
+            print(f"Erreur lors du décodage JSON du bloc extrait: {e_block}. Tentative de décodage direct de la réponse originale.")
+            # Fallback: if block parsing fails, try parsing original response_content directly
+            try:
+                movies_list_final = json.loads(response_content)
+            except json.JSONDecodeError as e_direct:
+                print(f"Erreur lors du décodage JSON direct de response_content: {e_direct}")
+                return jsonify({"error": "Invalid AI response", "details": "JSON parsing failed for both extracted block and direct content."}), 500
+    else:
+        # If no ``` block was found by extract_json_from_text, try parsing response_content directly
+        try:
+            print("Aucun bloc JSON extrait (ou bloc vide), tentative de décodage JSON direct de response_content.")
+            movies_list_final = json.loads(response_content)
+        except json.JSONDecodeError as e_direct:
+            print(f"Erreur lors du décodage JSON direct de response_content (aucun bloc valide trouvé): {e_direct}")
+            return jsonify({"error": "Invalid AI response format", "details": "No valid JSON block found and direct parsing failed."}), 500
+
+    return jsonify(movies_list_final)
+
+
 def get_strure_doc_ricofilm():
     doc_ricofilm=(
     {
