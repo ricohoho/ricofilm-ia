@@ -56,27 +56,36 @@ def search_movies():
     extracted_json_string = extract_json_from_text(response_content, is_mongo_query=False)
 
     movies_list_final = None
+    ai_response_error = False
     if extracted_json_string is not None:
         try:
             movies_list_final = json.loads(extracted_json_string)
         except json.JSONDecodeError as e_block:
             print(f"Erreur lors du décodage JSON du bloc extrait: {e_block}. Tentative de décodage direct de la réponse originale.")
-            # Fallback: if block parsing fails, try parsing original response_content directly
             try:
                 movies_list_final = json.loads(response_content)
             except json.JSONDecodeError as e_direct:
                 print(f"Erreur lors du décodage JSON direct de response_content: {e_direct}")
-                return jsonify({"error": "Invalid AI response", "details": "JSON parsing failed for both extracted block and direct content."}), 500
+                ai_response_error = True
     else:
-        # If no ``` block was found by extract_json_from_text, try parsing response_content directly
         try:
             print("Aucun bloc JSON extrait (ou bloc vide), tentative de décodage JSON direct de response_content.")
             movies_list_final = json.loads(response_content)
         except json.JSONDecodeError as e_direct:
             print(f"Erreur lors du décodage JSON direct de response_content (aucun bloc valide trouvé): {e_direct}")
-            return jsonify({"error": "Invalid AI response format", "details": "No valid JSON block found and direct parsing failed."}), 500
+            ai_response_error = True
 
-    return jsonify(movies_list_final)
+    if ai_response_error:
+        return json.dumps({"error": "Failed to parse AI response"})
+
+    imdb_ids = []
+    if isinstance(movies_list_final, list):
+        for movie in movies_list_final:
+            if isinstance(movie, dict) and 'id_imdb' in movie and movie['id_imdb']:
+                imdb_ids.append(movie['id_imdb'])
+
+    query = {"imdb_id": {"$in": imdb_ids}}
+    return json.dumps(query)
 
 
 
