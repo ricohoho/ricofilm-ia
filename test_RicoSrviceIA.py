@@ -319,8 +319,8 @@ class TestRicoServiceIA(unittest.TestCase):
 
         # Assertions
         self.assertEqual(response.status_code, 200)
-        expected_data = [{'title': 'Inception', 'id_imdb': 'tt1375666'}, {'title': 'The Matrix', 'id_imdb': 'tt0133093'}]
-        self.assertEqual(response.get_json(), expected_data)
+        expected_json_string = '{"imdb_id": {"$in": ["tt1375666", "tt0133093"]}}'
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
 
         # Verify Mistral client was called correctly
         mock_mistral_client.chat.complete.assert_called_once()
@@ -334,6 +334,118 @@ class TestRicoServiceIA(unittest.TestCase):
         self.assertIn("formatés au format json", prompt_content)
         self.assertIn("title", prompt_content)
         self.assertIn("son numéro imbd", prompt_content)
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_single_movie(self, mock_mistral_client):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = '```json [{"title": "Inception", "id_imdb": "tt1375666"}] ```'
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'a single movie'}),
+                                 content_type='application/json')
+
+        self.assertEqual(response.status_code, 200)
+        expected_json_string = '{"imdb_id": {"$in": ["tt1375666"]}}'
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_no_movies_found(self, mock_mistral_client):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = '```json [] ```'
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'unknown movie query'}),
+                                 content_type='application/json')
+
+        self.assertEqual(response.status_code, 200)
+        expected_json_string = '{"imdb_id": {"$in": []}}'
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_ai_returns_invalid_json(self, mock_mistral_client):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = "This is not JSON" # No JSON block, direct invalid content
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'any query'}),
+                                 content_type='application/json')
+
+        self.assertEqual(response.status_code, 200) # The endpoint itself handles the error gracefully
+        expected_json_string = '{"error": "Failed to parse AI response"}'
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_ai_returns_malformed_data_unexpected_structure(self, mock_mistral_client):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        # Valid JSON, but not a list of movie dicts
+        mock_message.content = '```json {"unexpected_key": "unexpected_value"} ```'
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'any query'}),
+                                 content_type='application/json')
+
+        self.assertEqual(response.status_code, 200)
+        # movies_list_final will not be a list, so imdb_ids will be empty
+        expected_json_string = '{"imdb_id": {"$in": []}}'
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_ai_returns_malformed_data_missing_imdb_id(self, mock_mistral_client):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        # Valid JSON list, but movie dicts are missing 'id_imdb'
+        mock_message.content = '```json [{"title": "Film C"}] ```'
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'any query'}),
+                                 content_type='application/json')
+
+        self.assertEqual(response.status_code, 200)
+        expected_json_string = '{"imdb_id": {"$in": []}}' # No id_imdb found
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
+
+    @patch('RicoSrviceIA.client')
+    def test_search_movies_web_ai_returns_mixed_malformed_data(self, mock_mistral_client):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_message = MagicMock()
+        # Valid JSON list, one movie with id_imdb, one without
+        mock_message.content = '```json [{"title": "Film A", "id_imdb": "tt123"}, {"title": "Film B"}] ```'
+        mock_choice.message = mock_message
+        mock_response.choices = [mock_choice]
+        mock_mistral_client.chat.complete.return_value = mock_response
+
+        response = self.app.post('/search_movies_web',
+                                 data=json.dumps({'requete': 'any query'}),
+                                 content_type='application/json')
+
+        self.assertEqual(response.status_code, 200)
+        expected_json_string = '{"imdb_id": {"$in": ["tt123"]}}' # Only tt123 should be included
+        self.assertEqual(response.get_data(as_text=True), expected_json_string)
 
 
 if __name__ == '__main__':
