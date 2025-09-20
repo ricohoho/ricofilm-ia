@@ -23,6 +23,7 @@ source myenv/bin/activate  # Sur macOS/Linux
 Installer le module dans l'environnement virtuel
 ``` bash
 pip install mistralai
+pip install flask
 ```
 ## Execution
 ```
