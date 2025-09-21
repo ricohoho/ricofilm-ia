@@ -1,1 +1,46 @@
+# --- Fichiers Python compilés ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Environnements virtuels ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Dépendances / builds ---
+*.egg-info/
+*.egg
+build/
+dist/
+
+# --- Tests ---
+.coverage
+coverage.xml
+.tox/
+.nox/
+.pytest_cache/
+
+# --- IDE / éditeurs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Logs et sorties ---
+*.log
+*.out
+*.err
+
+# --- Config locales ---
 .env
+.env.*
+secrets.json
+
+# --- Notebooks ---
+.ipynb_checkpoints
+
+# --- Systèmes ---
+.DS_Store
+Thumbs.db

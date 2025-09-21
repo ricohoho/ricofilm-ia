@@ -157,7 +157,7 @@ def search_movies_web():
     # Construire la requête pour Mistral AI
     user_query = (
         f"la liste des films qui répondent à la requete: {requete}, la liste retour étant formatés au format json, ayant comme attribut : title, son numéro imbd. "
-        "Par exemple : [{'title': 'Film A', 'id_imdb': 'tt1234567'}, {'title': 'Film B', 'id_imdb': 'tt7654321'}]."
+        "Par exemple : [{'title': 'Film A', 'imdb_id': 'tt1234567'}, {'title': 'Film B', 'imdb_id': 'tt7654321'}]."
     )
 
     print("user_query="+user_query)
