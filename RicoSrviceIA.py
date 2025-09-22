@@ -14,7 +14,12 @@ client = Mistral(api_key=api_key)
 
 @app.route("/")
 def read_root():
-    return {"message": "Service is live"}
+    try:
+        return {"message": "Service is live"}
+        return json.dumps(query)
+    except Exception as e:
+        print(f"Une erreur s'est produite dans search_movies: {e}")
+        return jsonify({"error": "Une erreur interne s'est produite."}), 500
 
 @app.route('/search_movies', methods=['POST'])
 def search_movies():
@@ -428,7 +433,3 @@ def remove_trailing_parenthesis(text):
     if text.endswith(")"):
         return text[:-1]  # Supprime le dernier caractère
     return text
-
-
-#if __name__ == '__main__':
-#    app.run(host='0.0.0.0', port=5000,debug=True, use_reloader=False)
