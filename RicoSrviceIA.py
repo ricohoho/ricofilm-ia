@@ -12,7 +12,7 @@ model = "mistral-large-latest"
 
 client = Mistral(api_key=api_key)
 
-@app.get("/")
+@app.route("/")
 def read_root():
     return {"message": "Service is live"}
 
