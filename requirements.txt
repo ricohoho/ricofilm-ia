@@ -1,3 +1,3 @@
 Flask==3.1.0
 mistralai==1.5.0  # Remplacez par la version appropriée
-gunicorn==20.1.0
+gunicorn==21.0.0

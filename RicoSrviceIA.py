@@ -105,16 +105,14 @@ def search_moviesSQL():
     requete = request.json.get('requete', '')
     print("requete="+requete)
 
-
-	
-    modeleDeRrequete = """db.getCollection('films').find(\{\{
+    # Modèle de requête MongoDB
+    modeleDeRrequete = """db.getCollection('films').find({{
     $and: [
-    { \"credits.cast.name\": \"Keanu Reeves\" },
-    { \"credits.cast.name"\: \"Ana de Armas\" },
-    { \"release_date"\: { $gt: 2000-12-31 } }
+    { "credits.cast.name": "Keanu Reeves" },
+    { "credits.cast.name": "Ana de Armas" },
+    { "release_date": { $gt: 2000-12-31 } }
     ]
-    }"""
-	
+    }}"""
 
     # Construire la requête pour Mistral AI
     strure_doc_ricofilm = get_strure_doc_ricofilm();
