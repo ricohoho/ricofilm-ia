@@ -12,6 +12,10 @@ model = "mistral-large-latest"
 
 client = Mistral(api_key=api_key)
 
+@app.get("/")
+def read_root():
+    return {"message": "Service is live"}
+
 @app.route('/search_movies', methods=['POST'])
 def search_movies():
     # Récupérer la requête utilisateur
