@@ -8,7 +8,9 @@ app = Flask(__name__)
 
 # Remplacez par votre clé API Mistral
 api_key = os.environ["MISTRAL_API_KEY"]
-model = "mistral-large-latest"
+#model = "mistral-large-latest"
+#model="mistral-small-latest"
+model = os.environ.get("MODEL_IA", "mistral-small-latest")
 
 client = Mistral(api_key=api_key)
 

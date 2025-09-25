@@ -14,21 +14,22 @@ flowchart
 ## Environnement préparation
 Créer d'un environnement virtuel
 ```
-python3 -m venv myenv
+python3 -m venv myenv2
 ```
 Activer l'environnement virtuel
 ```
-source myenv/bin/activate  # Sur macOS/Linux
+source myenv2/bin/activate  # Sur macOS/Linux
 ```
 Installer le module dans l'environnement virtuel
 ``` bash
 pip install mistralai
 pip install flask
+pip install --break-system-packages gunicorn
 ```
 ## Execution
 ```
 export MISTRAL_API_KEY="xxxxxxxxxx"
-(myenv)myenv/bin/python3 test1/mistra
+gunicorn RicoSrviceIA:app --bind 0.0.0.0:5000
 ```
 # Environement docker
 1. Créer un fichier requirements.txt
