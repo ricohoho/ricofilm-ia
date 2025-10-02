@@ -8,6 +8,7 @@ __pycache__/
 venv/
 env/
 ENV/
+env2/
 
 # --- Dépendances / builds ---
 *.egg-info/

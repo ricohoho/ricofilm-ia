@@ -3,6 +3,9 @@ import json
 import re
 from flask import Flask, request, jsonify
 from mistralai import Mistral
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
