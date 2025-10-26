@@ -173,18 +173,26 @@ def search_movies_web():
     )
 
     print("user_query="+user_query)
-
+    import time
+    start = time.time()
     # Interroger Mistral AI
-    chat_response = client.chat.complete(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": user_query,
-            },
-        ],
-        stream=False
-    )
+    try :
+        chat_response = client.chat.complete(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_query,
+                },
+            ],
+            stream=False
+        )
+    except Exception as e:
+        print(f"Erreur lors de l'appel à Mistral AI: {e}")
+        return jsonify({"error": "Mistral AI error", "details": str(e)}), 502
+    
+    end = time.time()
+    print(f"Temps de réponse Mistral AI: {end - start:.2f} secondes")
 
     # Extraire et traiter la réponse
     response_content = chat_response.choices[0].message.content
