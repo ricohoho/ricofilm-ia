@@ -14,7 +14,7 @@ flowchart
 ## Environnement préparation
 Créer d'un environnement virtuel
 ```
-python3 -m venv myenv2
+python3 -m venv venv
 ```
 Activer l'environnement virtuel
 ```
