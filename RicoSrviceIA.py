@@ -68,6 +68,7 @@ def search_movies():
     # First, extract content from ```json ... ``` block if present.
     # Mistral is prompted for raw JSON, but it might sometimes wrap it.
     extracted_json_string = extract_json_from_text(response_content, is_mongo_query=False)
+    print("extracted_json_string =", extracted_json_string)
 
     movies_list_final = None
     ai_response_error = False
@@ -169,6 +170,7 @@ def search_movies_web():
     # Construire la requête pour Mistral AI
     user_query = (
         f"la liste des films qui répondent à la requete: {requete}, la liste retour étant formatés au format json, ayant comme attribut : title, son numéro imbd. "
+        "les title devront etre les titres originaux dans la langue d'origine. "
         "Par exemple : [{'title': 'Film A', 'imdb_id': 'tt1234567'}, {'title': 'Film B', 'imdb_id': 'tt7654321'}]."
     )
 
@@ -203,6 +205,7 @@ def search_movies_web():
     # First, extract content from ```json ... ``` block if present.
     # Mistral is prompted for raw JSON, but it might sometimes wrap it.
     extracted_json_string = extract_json_from_text(response_content, is_mongo_query=False)
+    print("extracted_json_string =", extracted_json_string)
 
     movies_list_final = None
     if extracted_json_string is not None:
