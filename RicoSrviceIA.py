@@ -2,12 +2,14 @@ import os
 import json
 import re
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from mistralai import Mistral
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "https://ricofilm.ricohoho.fr"}})
 
 # Remplacez par votre clé API Mistral
 api_key = os.environ["MISTRAL_API_KEY"]
