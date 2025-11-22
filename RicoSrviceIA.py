@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://ricofilm.ricohoho.fr"}})
+CORS(app, resources={r"/*": {"origins": "https://ricofilm.ricohoho.fr"}}, supports_credentials=True)
 
 # Remplacez par votre clé API Mistral
 api_key = os.environ["MISTRAL_API_KEY"]
