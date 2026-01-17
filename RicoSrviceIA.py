@@ -42,7 +42,7 @@ def search_movies():
     )
 
     user_query = (
-        f"Paux tu me donner la liste des films ayant pour caractéristique :  {actor_name}. "
+        f"Peux tu me donner la liste des films ayant pour caractéristique :  {actor_name}. "
         "Renvoie la réponse au format JSON avec les champs 'title' et 'id_imdb'. "
         "Par exemple : [{'title': 'Film A', 'id_imdb': 'tt1234567'}, {'title': 'Film B', 'id_imdb': 'tt7654321'}]."
     )
