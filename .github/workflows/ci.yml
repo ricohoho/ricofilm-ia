@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run tests
+      env:
+        MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        MODEL_IA: ${{ vars.MODEL_IA }}
+      run: |
+        python -m unittest discover -s . -p "test_*.py"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build Docker image
+      run: docker build . --file Dockerfile --tag ghcr.io/ricohoho/ricofilm-ia:latest
+
+    - name: Login to GitHub Container Registry
+      run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ricohoho --password-stdin
+
+    - name: Push Docker image
+      run: docker push ghcr.io/ricohoho/ricofilm-ia:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ vars.SERVER_IP }}
+        username: ${{ vars.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }} 
+        port: 22
+        script: |
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ricohoho --password-stdin
+            docker pull ghcr.io/ricohoho/ricofilm-ia:latest
+            docker stop ricofilm-ia || true
+            docker rm ricofilm-ia || true
+            docker run -d --name ricofilm-ia -p 5000:5000 -e NODE_ENV=production -e MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }} -e MODEL_IA=${{ vars.MODEL_IA }} ghcr.io/ricohoho/ricofilm-ia:latest
+
+
