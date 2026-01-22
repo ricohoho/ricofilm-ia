@@ -19,7 +19,7 @@ model = os.environ.get("MODEL_IA", "mistral-small-latest")
 
 client = Mistral(api_key=api_key)
 
-@app.route("/")
+@app.route("/") 
 def read_root():
     try:
         return {"message": "Service is live"}
