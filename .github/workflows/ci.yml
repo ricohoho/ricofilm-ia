@@ -47,7 +47,7 @@ jobs:
 
     - name: Push Docker image
       run: docker push ghcr.io/ricohoho/ricofilm-ia:latest
-
+ 
   deploy:
     runs-on: ubuntu-latest
     environment: ricofilm  # Spécifiez l'environnement ici
