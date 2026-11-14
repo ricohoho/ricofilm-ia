@@ -3,7 +3,7 @@ import json
 import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from mistralai import Mistral
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,13 +11,14 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://ricofilm.ricohoho.fr"}}, supports_credentials=True)
 
-# Remplacez par votre clé API Mistral
-api_key = os.environ["MISTRAL_API_KEY"]
-#model = "mistral-large-latest"
-#model="mistral-small-latest"
-model = os.environ.get("MODEL_IA", "mistral-small-latest")
+# Clé API OpenRouter (avec fallback sur MISTRAL_API_KEY si besoin)
+api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("MISTRAL_API_KEY")
+model = os.environ.get("MODEL_IA", "openrouter/free")
 
-client = Mistral(api_key=api_key)
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+)
 
 @app.route("/") 
 def read_root():
@@ -49,22 +50,25 @@ def search_movies():
 
     print("user_query="+user_query)
 
-    # Interroger Mistral AI
-    chat_response = client.chat.complete(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": user_query,
-            },            
-        ],
-        stream=False
-    )
+    # Interroger OpenRouter
+    try:
+        chat_response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_query,
+                },            
+            ],
+            stream=False
+        )
+        # Extraire et traiter la réponse
+        response_content = chat_response.choices[0].message.content
+    except Exception as e:
+        print(f"Erreur lors de l'appel à l'API IA: {e}")
+        return jsonify({"error": "AI API error", "details": str(e)}), 502
 
-    # Extraire et traiter la réponse
-    response_content = chat_response.choices[0].message.content
-
-    print("Réponse de Mistral AI :", response_content) 
+    print("Réponse de l'IA :", response_content) 
 
 
     # First, extract content from ```json ... ``` block if present.
@@ -135,20 +139,24 @@ def search_moviesSQL():
 
     print("user_query="+user_query)
 
-    # Interroger Mistral AI
-    chat_response = client.chat.complete(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": user_query,
-            },
-        ]
-    )
+    # Interroger OpenRouter
+    try:
+        chat_response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_query,
+                },
+            ]
+        )
+        response_content = chat_response.choices[0].message.content
+    except Exception as e:
+        print(f"Erreur lors de l'appel à l'API IA: {e}")
+        return jsonify({"error": "AI API error", "details": str(e)}), 502
 
-    response_content = chat_response.choices[0].message.content
     print("[----------------------------------------") 
-    print("Réponse de Mistral AI :", response_content) 
+    print("Réponse de l'IA :", response_content) 
     print("----------------------------------------]") 
     
     # json_string = extract_requete_mongi(response_content)    
@@ -179,9 +187,9 @@ def search_movies_web():
     print("user_query="+user_query)
     import time
     start = time.time()
-    # Interroger Mistral AI
+    # Interroger OpenRouter
     try :
-        chat_response = client.chat.complete(
+        chat_response = client.chat.completions.create(
             model=model,
             messages=[
                 {
@@ -192,16 +200,16 @@ def search_movies_web():
             stream=False
         )
     except Exception as e:
-        print(f"Erreur lors de l'appel à Mistral AI: {e}")
-        return jsonify({"error": "Mistral AI error", "details": str(e)}), 502
+        print(f"Erreur lors de l'appel à l'API IA: {e}")
+        return jsonify({"error": "AI API error", "details": str(e)}), 502
     
     end = time.time()
-    print(f"Temps de réponse Mistral AI: {end - start:.2f} secondes")
+    print(f"Temps de réponse de l'IA: {end - start:.2f} secondes")
 
     # Extraire et traiter la réponse
     response_content = chat_response.choices[0].message.content
 
-    print("Réponse de Mistral AI :", response_content)
+    print("Réponse de l'IA :", response_content)
 
 
     # First, extract content from ```json ... ``` block if present.
