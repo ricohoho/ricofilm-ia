@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ricofilm  # Spécifiez l'environnement ici
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
@@ -26,6 +26,7 @@ jobs:
 
     - name: Run tests
       env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         MODEL_IA: ${{ vars.MODEL_IA }}
       run: |
@@ -37,7 +38,7 @@ jobs:
     needs: test
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Build Docker image
       run: docker build . --file Dockerfile --tag ghcr.io/ricohoho/ricofilm-ia:latest
@@ -66,6 +67,6 @@ jobs:
             docker pull ghcr.io/ricohoho/ricofilm-ia:latest
             docker stop ricofilm-ia || true
             docker rm ricofilm-ia || true
-            docker run -d --name ricofilm-ia -p 5000:5000 -e NODE_ENV=production -e MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }} -e MODEL_IA=${{ vars.MODEL_IA }} ghcr.io/ricohoho/ricofilm-ia:latest
+            docker run -d --name ricofilm-ia -p 5000:5000 -e NODE_ENV=production -e OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }} -e MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }} -e MODEL_IA=${{ vars.MODEL_IA }} ghcr.io/ricohoho/ricofilm-ia:latest
 
 
