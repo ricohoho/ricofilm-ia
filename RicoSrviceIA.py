@@ -18,6 +18,7 @@ model = os.environ.get("MODEL_IA", "openrouter/free")
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=api_key,
+    timeout=120.0,
 )
 
 @app.route("/") 
@@ -45,6 +46,7 @@ def search_movies():
     user_query = (
         f"Peux tu me donner la liste des films ayant pour caractéristique :  {actor_name}. "
         "Renvoie la réponse au format JSON avec les champs 'title' et 'id_imdb'. "
+        "Donne au maximum les 20 films les plus pertinents. "
         "Par exemple : [{'title': 'Film A', 'id_imdb': 'tt1234567'}, {'title': 'Film B', 'id_imdb': 'tt7654321'}]."
     )
 
@@ -181,6 +183,7 @@ def search_movies_web():
     user_query = (
         f"la liste des films qui répondent à la requete: {requete}, la liste retour étant formatés au format json, ayant comme attribut : title, son numéro imbd. "
         "les title devront etre les titres originaux dans la langue d'origine. "
+        "Donne au maximum les 20 films les plus pertinents. "
         "Par exemple : [{'title': 'Film A', 'imdb_id': 'tt1234567'}, {'title': 'Film B', 'imdb_id': 'tt7654321'}]."
     )
 

@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Exposer le port sur lequel l'application va tourner
 EXPOSE 5000
 
-# Définir la commande pour démarrer l'application
-CMD ["gunicorn", "RicoSrviceIA:app", "--bind", "0.0.0.0:5000"]
+# Définir la commande pour démarrer l'application avec un timeout adapté aux LLM (180s)
+CMD ["gunicorn", "RicoSrviceIA:app", "--bind", "0.0.0.0:5000", "--timeout", "180", "--workers", "2"]
